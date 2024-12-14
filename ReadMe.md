@@ -13,7 +13,7 @@ This repository contains a basic implementation of a neural network trainer in P
 
 1.  **Clone the repository:**
     ```bash
-    git clone [https://github.com/your-username/simple-neural-network-trainer.git](https://github.com/your-username/simple-neural-network-trainer.git)
+    git clone [https://github.com/SelmanDemiray/Spike_Trainer](https://github.com/SelmanDemiray/Spike_Trainer)
     ```
 
 2.  **Install dependencies:**
