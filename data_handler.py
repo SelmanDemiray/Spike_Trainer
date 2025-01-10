@@ -77,6 +77,76 @@ def load_cifar10(path):
 
     return train_data, train_labels_one_hot, test_data, test_labels_one_hot
 
+def load_emnist(path):
+    """
+    Loads the EMNIST dataset.
+
+    Parameters:
+    path (str): Path to the directory where EMNIST data is stored.
+
+    Returns:
+    tuple: Training and testing images and labels.
+    """
+    return load_mnist(path)  # EMNIST has the same format as MNIST
+
+def load_svhn(path):
+    """
+    Loads the SVHN dataset.
+
+    Parameters:
+    path (str): Path to the directory where SVHN data is stored.
+
+    Returns:
+    tuple: Training and testing images and labels.
+    """
+    def load_svhn_file(file_path):
+        import h5py
+        with h5py.File(file_path, 'r') as f:
+            images = np.array(f['X']).transpose(3, 0, 1, 2)
+            labels = np.array(f['y'])
+            labels[labels == 10] = 0  # Convert label 10 to 0
+            one_hot_labels = np.zeros((labels.size, 10))
+            one_hot_labels[np.arange(labels.size), labels] = 1
+        return images, one_hot_labels
+
+    train_images, train_labels = load_svhn_file(os.path.join(path, 'train_32x32.mat'))
+    test_images, test_labels = load_svhn_file(os.path.join(path, 'test_32x32.mat'))
+
+    return train_images, train_labels, test_images, test_labels
+
+def load_cifar100(path):
+    """
+    Loads the CIFAR-100 dataset.
+
+    Parameters:
+    path (str): Path to the directory where CIFAR-100 data is stored.
+
+    Returns:
+    tuple: Training and testing images and labels.
+    """
+    def unpickle(file):
+        import pickle
+        with open(file, 'rb') as fo:
+            dict = pickle.load(fo, encoding='bytes')
+        return dict
+
+    train_dict = unpickle(os.path.join(path, 'train'))
+    test_dict = unpickle(os.path.join(path, 'test'))
+
+    train_data = train_dict[b'data'].reshape(-1, 3, 32, 32).transpose(0, 2, 3, 1)
+    train_labels = np.array(train_dict[b'fine_labels'])
+
+    test_data = test_dict[b'data'].reshape(-1, 3, 32, 32).transpose(0, 2, 3, 1)
+    test_labels = np.array(test_dict[b'fine_labels'])
+
+    # Convert labels to one-hot encoding
+    train_labels_one_hot = np.zeros((train_labels.size, 100))
+    train_labels_one_hot[np.arange(train_labels.size), train_labels] = 1
+    test_labels_one_hot = np.zeros((test_labels.size, 100))
+    test_labels_one_hot[np.arange(test_labels.size), test_labels] = 1
+
+    return train_data, train_labels_one_hot, test_data, test_labels_one_hot
+
 def download_and_extract(url, path):
     """
     Downloads and extracts a compressed dataset using requests.
@@ -141,13 +211,20 @@ def get_dataset(dataset_name):
             download_and_extract('http://codh.rois.ac.jp/kmnist/dataset/kmnist/t10k-labels-idx1-ubyte.gz', path)
         return load_mnist(path)  # You can reuse the load_mnist function for KMNIST
     elif dataset_name == 'emnist':
-        # Add EMNIST download and loading logic here
-        pass
+        path = '../emnist_data'
+        if not os.path.exists(os.path.join(path, 'train-images-idx3-ubyte')):
+            download_and_extract('http://www.itl.nist.gov/iaui/vip/cs_links/EMNIST/gzip.zip', path)
+        return load_emnist(path)
     elif dataset_name == 'svhn':
-        # Add SVHN download and loading logic here
-        pass
+        path = '../svhn_data'
+        if not os.path.exists(os.path.join(path, 'train_32x32.mat')):
+            download_and_extract('http://ufldl.stanford.edu/housenumbers/train_32x32.mat', path)
+            download_and_extract('http://ufldl.stanford.edu/housenumbers/test_32x32.mat', path)
+        return load_svhn(path)
     elif dataset_name == 'cifar100':
-        # Add CIFAR-100 download and loading logic here
-        pass
+        path = '../cifar100_data'
+        if not os.path.exists(os.path.join(path, 'train')):
+            download_and_extract('https://www.cs.toronto.edu/~kriz/cifar-100-python.tar.gz', path)
+        return load_cifar100(path)
     else:
         raise ValueError('Invalid dataset name.')

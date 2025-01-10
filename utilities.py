@@ -27,6 +27,18 @@ def relu(x):
     """
     return np.maximum(0, x)
 
+def tanh(x):
+    """
+    Calculates the tanh function on each element of a matrix.
+
+    Parameters:
+    x (numpy.ndarray or float): Input array or scalar.
+
+    Returns:
+    numpy.ndarray or float: Output after applying the tanh function element-wise.
+    """
+    return np.tanh(x)
+
 def softmax(x):
     """
     Calculates the softmax function for each column of a matrix.
@@ -61,7 +73,7 @@ def forward_pass(images, W0, W1, b0, b1, activation_function):
     return r0, r1
 
 
-def backward_pass(images, labels, r0, r1, W0, W1, b0, b1, activation_function):
+def backward_pass(images, labels, r0, r1, W0, W1, b0, b1, activation_function, optimizer, optimizer_params):
     """
     Run a backward pass through the network.
 
@@ -75,6 +87,8 @@ def backward_pass(images, labels, r0, r1, W0, W1, b0, b1, activation_function):
     b0 (numpy.ndarray): Bias vector for hidden layer.
     b1 (numpy.ndarray): Bias vector for output layer.
     activation_function (function): Activation function used (sigmoid or relu).
+    optimizer (str): Optimizer to use ('adam' or other).
+    optimizer_params (dict): Parameters for the optimizer.
 
     Returns:
     dL_by_dW0 (numpy.ndarray): Gradient of the loss with respect to W0.
@@ -106,7 +120,12 @@ def backward_pass(images, labels, r0, r1, W0, W1, b0, b1, activation_function):
     dL_by_dr0 = np.dot(dx1_by_dr0.T, dL_by_dx1)  
 
     # Gradient of the hidden layer activity with respect to the hidden layer input
-    dr0_by_dx0 = r0 * (1 - r0)  
+    if activation_function == sigmoid:
+        dr0_by_dx0 = r0 * (1 - r0)
+    elif activation_function == relu:
+        dr0_by_dx0 = (r0 > 0).astype(float)
+    elif activation_function == tanh:
+        dr0_by_dx0 = 1 - r0 ** 2
 
     # Gradient of the loss with respect to the hidden layer input
     dL_by_dx0 = dL_by_dr0 * dr0_by_dx0  
@@ -117,6 +136,53 @@ def backward_pass(images, labels, r0, r1, W0, W1, b0, b1, activation_function):
     # Gradient of the loss with respect to the hidden layer weights and biases
     dL_by_dW0 = np.dot(dL_by_dx0, dx0_by_dW0.T)  
     dL_by_db0 = np.sum(dL_by_dx0, axis=1, keepdims=True)  
+
+    if optimizer == 'adam':
+        beta1, beta2, epsilon, t = optimizer_params['beta1'], optimizer_params['beta2'], optimizer_params['epsilon'], optimizer_params['t']
+        
+        # Update biased first moment estimate
+        optimizer_params['mW0'] = beta1 * optimizer_params['mW0'] + (1 - beta1) * dL_by_dW0
+        optimizer_params['mW1'] = beta1 * optimizer_params['mW1'] + (1 - beta1) * dL_by_dW1
+        optimizer_params['mb0'] = beta1 * optimizer_params['mb0'] + (1 - beta1) * dL_by_db0
+        optimizer_params['mb1'] = beta1 * optimizer_params['mb1'] + (1 - beta1) * dL_by_db1
+
+        # Update biased second raw moment estimate
+        optimizer_params['vW0'] = beta2 * optimizer_params['vW0'] + (1 - beta2) * (dL_by_dW0 ** 2)
+        optimizer_params['vW1'] = beta2 * optimizer_params['vW1'] + (1 - beta2) * (dL_by_dW1 ** 2)
+        optimizer_params['vb0'] = beta2 * optimizer_params['vb0'] + (1 - beta2) * (dL_by_db0 ** 2)
+        optimizer_params['vb1'] = beta2 * optimizer_params['vb1'] + (1 - beta2) * (dL_by_db1 ** 2)
+
+        # Compute bias-corrected first moment estimate
+        mW0_hat = optimizer_params['mW0'] / (1 - beta1 ** t)
+        mW1_hat = optimizer_params['mW1'] / (1 - beta1 ** t)
+        mb0_hat = optimizer_params['mb0'] / (1 - beta1 ** t)
+        mb1_hat = optimizer_params['mb1'] / (1 - beta1 ** t)
+
+        # Compute bias-corrected second raw moment estimate
+        vW0_hat = optimizer_params['vW0'] / (1 - beta2 ** t)
+        vW1_hat = optimizer_params['vW1'] / (1 - beta2 ** t)
+        vb0_hat = optimizer_params['vb0'] / (1 - beta2 ** t)
+        vb1_hat = optimizer_params['vb1'] / (1 - beta2 ** t)
+
+        # Update weights and biases
+        W0 -= epsilon * mW0_hat / (np.sqrt(vW0_hat) + 1e-8)
+        W1 -= epsilon * mW1_hat / (np.sqrt(vW1_hat) + 1e-8)
+        b0 -= epsilon * mb0_hat / (np.sqrt(vb0_hat) + 1e-8)
+        b1 -= epsilon * mb1_hat / (np.sqrt(vb1_hat) + 1e-8)
+    elif optimizer == 'rmsprop':
+        beta, epsilon = optimizer_params['beta'], optimizer_params['epsilon']
+        
+        # Update running average of squared gradients
+        optimizer_params['vW0'] = beta * optimizer_params['vW0'] + (1 - beta) * (dL_by_dW0 ** 2)
+        optimizer_params['vW1'] = beta * optimizer_params['vW1'] + (1 - beta) * (dL_by_dW1 ** 2)
+        optimizer_params['vb0'] = beta * optimizer_params['vb0'] + (1 - beta) * (dL_by_db0 ** 2)
+        optimizer_params['vb1'] = beta * optimizer_params['vb1'] + (1 - beta) * (dL_by_db1 ** 2)
+
+        # Update weights and biases
+        W0 -= epsilon * dL_by_dW0 / (np.sqrt(optimizer_params['vW0']) + 1e-8)
+        W1 -= epsilon * dL_by_dW1 / (np.sqrt(optimizer_params['vW1']) + 1e-8)
+        b0 -= epsilon * dL_by_db0 / (np.sqrt(optimizer_params['vb0']) + 1e-8)
+        b1 -= epsilon * dL_by_db1 / (np.sqrt(optimizer_params['vb1']) + 1e-8)
 
     return dL_by_dW0, dL_by_dW1, dL_by_db0, dL_by_db1
 
@@ -213,3 +279,57 @@ def show_weights(weights, dataset_name):
         # For CIFAR-10, we'll skip showing the weights as they are not easily interpretable
         pass
     # Add more dataset-specific weight display logic here if needed
+
+def save_weights(filepath, W0, W1):
+    """
+    Saves the weights to a file.
+
+    Parameters:
+    filepath (str): Path to the file where weights will be saved.
+    W0 (numpy.ndarray): Weights matrix for hidden layer.
+    W1 (numpy.ndarray): Weights matrix for output layer.
+    """
+    np.savez(filepath, W0=W0, W1=W1)
+
+def load_weights(filepath):
+    """
+    Loads the weights from a file.
+
+    Parameters:
+    filepath (str): Path to the file from which weights will be loaded.
+
+    Returns:
+    tuple: Loaded weights matrices (W0, W1).
+    """
+    data = np.load(filepath)
+    return data['W0'], data['W1']
+
+def convert_weights_for_snn(W0, W1):
+    """
+    Converts the weights to a format compatible with the SNN.
+
+    Parameters:
+    W0 (numpy.ndarray): Weights matrix for hidden layer.
+    W1 (numpy.ndarray): Weights matrix for output layer.
+
+    Returns:
+    tuple: Converted weights matrices (W0_snn, W1_snn).
+    """
+    W0_snn = W0.T  # Transpose to match SNN input format
+    W1_snn = W1.T  # Transpose to match SNN input format
+    return W0_snn, W1_snn
+
+def normalize_weights(W0, W1):
+    """
+    Normalizes the weights to ensure they are suitable for the SNN.
+
+    Parameters:
+    W0 (numpy.ndarray): Weights matrix for hidden layer.
+    W1 (numpy.ndarray): Weights matrix for output layer.
+
+    Returns:
+    tuple: Normalized weights matrices (W0_norm, W1_norm).
+    """
+    W0_norm = W0 / np.linalg.norm(W0, axis=1, keepdims=True)
+    W1_norm = W1 / np.linalg.norm(W1, axis=1, keepdims=True)
+    return W0_norm, W1_norm

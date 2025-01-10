@@ -6,7 +6,7 @@ This repository contains a basic implementation of a neural network trainer in P
 
 *   Modular structure: The code is divided into logical modules (`neural_network.py`, `utilities.py`, `data_handler.py`) for easy understanding and modification.
 *   Dataset Support: Handles various datasets including MNIST, CIFAR-10, Fashion MNIST, KMNIST, EMNIST, SVHN, and CIFAR-100.
-*   Activation Functions: Supports sigmoid and ReLU activation functions.
+*   Activation Functions: Supports sigmoid, ReLU, and tanh activation functions.
 *   Visualization: Visualizes weights (receptive fields) and training metrics (loss, error) to aid in understanding the network's behavior.
 
 ## How to Use
@@ -27,8 +27,14 @@ This repository contains a basic implementation of a neural network trainer in P
     ```
 
 4.  **Follow the prompts:**
-    *   You'll be presented with a list of available datasets. Enter the number corresponding to your desired dataset.
-    *   Choose an activation function (sigmoid or relu).
+    *   You'll be presented with a list of available datasets. Enter the number corresponding to your desired dataset (default: 1).
+    *   Choose an activation function (sigmoid, relu, or tanh, default: sigmoid).
+    *   Choose an optimizer (sgd, adam, or rmsprop, default: adam).
+    *   Set hyperparameters such as learning rate (default: 0.01), momentum (default: 0.1), weight decay (default: 0.001), number of epochs (default: 10), number of batches (default: 10), and number of hidden units (default: 10).
+    *   After training, you can choose to automatically save the trained weights to a file.
+    *   You can also load previously saved weights for further training or evaluation.
+    *   Optionally, you can save the weights in a format compatible with the SNN.
+    *   You can also save the normalized weights for the SNN.
 
 ## Code Structure
 
@@ -49,7 +55,7 @@ This repository contains a basic implementation of a neural network trainer in P
 
 ## Potential Enhancements
 
-*   Implement additional activation functions (tanh, leaky ReLU, etc.).
+*   Implement additional activation functions (leaky ReLU, etc.).
 *   Add support for more advanced optimization algorithms (Adam, RMSprop).
 *   Incorporate regularization techniques (dropout, L1/L2 regularization).
 *   Extend the code to handle deeper network architectures with more layers.
